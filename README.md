@@ -1,7 +1,7 @@
 # Seplos MQTT
 Read data From Seplos BMS and send them to the Home Assistant
 
-This is a bash script that reads data from a Seplos BMS over RS485 and publishes it to Home Assistant with MQTT discovery. Home Assistant creates the device and its sensors, binary sensor, and cell statistics from those messages. The topic layout follows the same idea as [batmon-ha](https://github.com/fl4p/batmon-ha): one state topic per metric, plus a retained discovery payload for each entity.
+This is a bash script that reads data from a Seplos BMS over RS485 and publishes it to Home Assistant with MQTT discovery. Home Assistant creates the device and its sensors, binary sensor, and cell statistics from one retained device-discovery payload and one shared JSON state topic. Calculated values such as battery status, power, and charge or discharge capacity are `value_template` entries in that payload. The approach follows the same idea as [batmon-ha](https://github.com/fl4p/batmon-ha).
 
 ## Hardware requirements:
 1. Raspberry (i use an RPI4)
@@ -19,13 +19,13 @@ move to the your user home and use git clone to download this script
 ```
 git clone https://github.com/cods4/SEPLOS_MQTT_HA.git
 
-chmod 700 ~/SEPLOS_MQTT/query_seplos_ha.sh ~/SEPLOS_MQTT/run_bms_query.sh
+chmod 700 ~/SEPLOS_MQTT_HA/query_seplos_ha.sh ~/SEPLOS_MQTT_HA/run_bms_query.sh
 ```
 
 copy the example config and edit it. `DEV` is the USB-RS485 device. The scripts read `config.ini`, which is not tracked, so a later `git pull` leaves your settings in place.
 
 ```
-cp ~/SEPLOS_MQTT/config.example.ini ~/SEPLOS_MQTT/config.ini
+cp ~/SEPLOS_MQTT_HA/config.example.ini ~/SEPLOS_MQTT_HA/config.ini
 ```
 
 ```
@@ -61,6 +61,11 @@ DISCOVERY_INTERVAL=3600
 # Nominal pack size in Ah for charge capacity. Usable Ah is this times SOH.
 # Leave unset to use the rated capacity reported by the BMS.
 #PACK_CAPACITY_AH=570
+# Seconds before Home Assistant marks a sensor unavailable.
+# Leave unset to use max(TELEPERIOD * 6, 120).
+#EXPIRE_AFTER=120
+# Set to 1 to append every received serial frame, in hex, to frames.log
+#LOG_FRAMES=1
 ```
 
 then install the following pkg:
@@ -75,17 +80,17 @@ edit the crontab to run the script at the boot
 
 ```crontab -e``` and add the line below:
 ```
-@reboot /home/pi/SEPLOS_MQTT/run_bms_query.sh
+@reboot /home/pi/SEPLOS_MQTT_HA/run_bms_query.sh
 ```
 
 ## Manual execution
 simply run 
-```~/SEPLOS_MQTT/run_bms_query.sh```
+```~/SEPLOS_MQTT_HA/run_bms_query.sh```
 or
-```nohup ~/SEPLOS_MQTT/run_bms_query.sh &```
+```nohup ~/SEPLOS_MQTT_HA/run_bms_query.sh &```
 
 To test if the communication is working try to run
-```~/SEPLOS_MQTT/query_seplos_ha.sh 4201```
+```~/SEPLOS_MQTT_HA/query_seplos_ha.sh 4201```
 
 you can see the output like this:
 ```
@@ -124,14 +129,14 @@ you can see the output like this:
 
 `query_seplos_ha.sh 4201 kv` prints the same reading as `KEY=value` lines. The publisher uses that form.
 
-On the first good reading, and again every `DISCOVERY_INTERVAL` seconds, the script publishes one retained MQTT device discovery payload. That payload lists every entity. Each entity has a `value_template`, so Home Assistant builds the sensors from one shared JSON state message. Battery status, power, and charge/discharge capacity are templates in that payload, evaluated by Home Assistant:
+`run_bms_query.sh` publishes one retained MQTT device discovery payload on startup, and again every `DISCOVERY_INTERVAL` seconds. Each entity has a `value_template`, so Home Assistant builds the sensors from one shared JSON state message. Battery status, power, and charge/discharge capacity are templates in that payload, evaluated by Home Assistant. Set `LOG_FRAMES=1` to append every received serial frame, as hex, to `frames.log`.
 
 ```
 homeassistant/device/seplos_1/config
 seplos_1/state    {"cell01":3431,"charge_discharge":26.01,"total_voltage":54.90,"soc":96.8,...}
 ```
 
-`id_prefix` is part of the device id and of every `unique_id`. Leave it unchanged after the first start, otherwise Home Assistant creates a second device. `DEVICE_NAME` is the name shown on that device.
+`id_prefix` is part of the device id and of every `unique_id`. Leave it unchanged after the first start, otherwise Home Assistant creates a second device. The min and max cell sensors keep the original ids, including the capital letters: `seplos_1_lowest_cell_V`, `seplos_1_lowest_cell_N`, `seplos_1_highest_cell_V`, and `seplos_1_highest_cell_N` when `TOPIC=seplos` and `id_prefix=1`. `DEVICE_NAME` is the name shown on that device.
 
 ## Installation and configuration for Home Assistant only
 
@@ -145,9 +150,9 @@ connect to the HA with ssh port 22
 ```
 cd /share
 
-git clone https://github.com/byte4geek/SEPLOS_MQTT.git
+git clone https://github.com/cods4/SEPLOS_MQTT_HA.git
 
-chmod 700 ./SEPLOS_MQTT/query_seplos_ha.sh ./SEPLOS_MQTT/run_bms_query_ha.sh
+chmod 700 ./SEPLOS_MQTT_HA/query_seplos_ha.sh ./SEPLOS_MQTT_HA/run_bms_query_ha.sh
 
 ssh-copy-id root@<YOUR HA IP>     ---> and choose yes
 ```
@@ -155,7 +160,7 @@ ssh-copy-id root@<YOUR HA IP>     ---> and choose yes
 copy the example config and edit it. `DEV` is the USB-RS485 device. The scripts read `config.ini`, which is not tracked, so a later `git pull` leaves your settings in place.
 
 ```
-cp ./SEPLOS_MQTT/config.example.ini ./SEPLOS_MQTT/config.ini
+cp ./SEPLOS_MQTT_HA/config.example.ini ./SEPLOS_MQTT_HA/config.ini
 ```
 
 ```
@@ -191,11 +196,16 @@ DISCOVERY_INTERVAL=3600
 # Nominal pack size in Ah for charge capacity. Usable Ah is this times SOH.
 # Leave unset to use the rated capacity reported by the BMS.
 #PACK_CAPACITY_AH=570
+# Seconds before Home Assistant marks a sensor unavailable.
+# Leave unset to use max(TELEPERIOD * 6, 120).
+#EXPIRE_AFTER=120
+# Set to 1 to append every received serial frame, in hex, to frames.log
+#LOG_FRAMES=1
 ```
 
 create a shell command in HA:
 ```
-seplos_query: ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no root@<YOUR HA IP> "cd /share/SEPLOS_MQTT;nohup /share/SEPLOS_MQTT/run_bms_query_ha.sh &"
+seplos_query: ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no root@<YOUR HA IP> "cd /share/SEPLOS_MQTT_HA;nohup /share/SEPLOS_MQTT_HA/run_bms_query_ha.sh &"
 ```
 
 then create an automation to run the script every 10 seconds or what you prefer
@@ -219,7 +229,7 @@ Set `TOPIC=seplos` and `id_prefix=1` when the existing MQTT sensors use ids such
 
 `lovelace.yaml` is an optional dashboard for those entities (`sensor.bms_soc`, `sensor.bms_cell_01`, `sensor.bms_discharge_capacity`, `sensor.bms_charge_capacity`, `sensor.bms_battery_status`, `binary_sensor.bms_battery_charging`, and the rest of the `bms_*` object ids).
 
-When upgrading, remove the Seplos `mqtt:` sensor list and the template sensors for battery status, discharge capacity, charge capacity, and power. The MQTT sensors keep their history because the `unique_id` matches. The four template sensors are a different integration, so delete those entities after removing them from YAML. Discovery then creates `sensor.bms_battery_status`, `sensor.bms_discharge_capacity`, `sensor.bms_charge_capacity`, and `sensor.bms_power`.
+When upgrading, remove the Seplos `mqtt:` sensor list and the template sensors for battery status, discharge capacity, charge capacity, and power. The MQTT sensors keep their history because the `unique_id` matches, including `seplos_1_lowest_cell_V` and the other min/max ids. The four template sensors are a different integration, so delete those entities after removing them from YAML. If a discovered entity is named `sensor.bms_battery_status_2` or `sensor.bms_lowest_cell_v_2`, the original entity id is still taken. Delete the leftover entity, then restart `run_bms_query.sh` so discovery is published again. Discovery then creates `sensor.bms_battery_status`, `sensor.bms_discharge_capacity`, `sensor.bms_charge_capacity`, and `sensor.bms_power`.
 
 example:
 ![BMS dashboard](https://github.com/byte4geek/Seplos-BMS-vs-Home-Assistant/raw/main/bms_ha_panel.JPG)
