@@ -19,6 +19,10 @@ if ! acquire_poll_lock; then
 	exit 0
 fi
 
+# A restart should publish discovery again. Deleting the device in Home
+# Assistant removes the retained config, and this stamp would otherwise
+# suppress a new one until DISCOVERY_INTERVAL elapses.
+rm -f "$STAMP_FILE"
 log_msg "Script started"
 while true; do
 	rotate_file "$LOGNAME"

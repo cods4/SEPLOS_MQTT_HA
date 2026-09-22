@@ -73,6 +73,13 @@ assert_eq "$DEV" "/dev/ttyUSB0" "serial device"
 	log_rx "ignored"
 )
 grep -q 'fe 7e 32 30 30 30 34 36 30 30' "$tmp/frames.log" || fail "frame hex log"
+(
+	# shellcheck source=query_seplos_ha.sh
+	source "$SCRIPT_DIR/query_seplos_ha.sh"
+	assert_eq "$(normalize_bc '-.73')" "-0.73" "negative bc fraction"
+	assert_eq "$(normalize_bc '.05')" "0.05" "positive bc fraction"
+	assert_eq "$(normalize_bc '-17.42')" "-17.42" "bc value with digits"
+)
 [ ! -s "$tmp/frames.log" ] || [ "$(wc -l < "$tmp/frames.log" | tr -d '[:space:]')" = 1 ] || fail "LOG_FRAMES=0 still logged"
 STAMP_FILE="$tmp/stamp"
 LOGNAME="$tmp/bms.log"
@@ -146,6 +153,10 @@ assert cell["platform"] == "sensor"
 assert cell["unique_id"] == "seplos_364715398511_cell01"
 assert cell["default_entity_id"] == "sensor.bms_cell_01"
 assert cell["name"] == "Cell 01"
+low = p["cmps"]["seplos_364715398511_lowest_cell_V"]
+assert low["unique_id"] == "seplos_364715398511_lowest_cell_V"
+assert low["default_entity_id"] == "sensor.bms_lowest_cell_v"
+assert "seplos_364715398511_lowest_cell_v" not in p["cmps"]
 assert cell["value_template"] == "{{ value_json.cell01 }}"
 assert cell["device_class"] == "voltage"
 assert cell["unit_of_measurement"] == "mV"

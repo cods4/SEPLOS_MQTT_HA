@@ -13,6 +13,15 @@ source "$SCRIPT_DIR/ha_mqtt.sh"
 ADDR=00
 OUTMODE=text
 
+# bc prints fractions with no integer digit as .05 and -.73.
+normalize_bc() {
+	case "$1" in
+		.*) printf '0%s' "$1" ;;
+		-.*) printf '%s' "-0${1#-}" ;;
+		*) printf '%s' "$1" ;;
+	esac
+}
+
 # Get a 4 ASCII digit number and divide by $1, precision $2 ( or 2dp. ) $3 == 1 for signed.
 get_div()
 {
@@ -22,7 +31,7 @@ get_div()
 
 	N=$(printf "%d" 0x$N)
 	[ "$3" = "1" -a $N -gt 32767 ] && N=$((N - 65536))
-	N=$(bc <<< "scale = $P; $N / $1")
+	N=$(normalize_bc "$(bc <<< "scale = $P; $N / $1")")
 }
 
 # Append one received chunk as hex. The first byte is the useful part: the
@@ -99,7 +108,7 @@ read_serdata()
 		do
 			local T=$(printf "%d" 0x${rdata:$OFFSET:4})
 			OFFSET=$((OFFSET + 4))
-			T=$(bc <<< "scale = 1; ($T - 2731)/10")
+			T=$(normalize_bc "$(bc <<< "scale = 1; ($T - 2731)/10")")
 			emit_value "TEMP_$l" "$T"
 		done
 

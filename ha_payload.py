@@ -113,6 +113,15 @@ def discovery_payload(device_id):
             icon="mdi:car-battery",
         )
 
+    # Suffixes keep the unique_ids already stored for the min/max sensors.
+    # Those ids use a capital V and N. A lowercase id is a second entity,
+    # so Home Assistant appends _2 to the entity id.
+    uid_suffix = {
+        "lowest_cell_v": "lowest_cell_V",
+        "highest_cell_v": "highest_cell_V",
+        "lowest_cell_n": "lowest_cell_N",
+        "highest_cell_n": "highest_cell_N",
+    }
     plain = (
         ("lowest_cell_v", "Lowest Cell V", "sensor.bms_lowest_cell_v", "voltage", "mV", "mdi:car-battery", 0),
         ("highest_cell_v", "Highest Cell V", "sensor.bms_highest_cell_v", "voltage", "mV", "mdi:car-battery", 0),
@@ -121,7 +130,7 @@ def discovery_payload(device_id):
         ("cell_median", "Cell Median", "sensor.bms_cell_median", "voltage", "mV", "mdi:car-battery", 0),
     )
     for key, name, entity_id, device_class, unit, icon, precision in plain:
-        unique_id = f"{device_id}_{key}"
+        unique_id = f"{device_id}_{uid_suffix.get(key, key)}"
         components[unique_id] = sensor(
             unique_id, name, entity_id, f"{{{{ value_json.{key} }}}}",
             device_class=device_class, state_class="measurement",
@@ -131,7 +140,7 @@ def discovery_payload(device_id):
         ("lowest_cell_n", "Lowest Cell N", "sensor.bms_lowest_cell_n"),
         ("highest_cell_n", "Highest Cell N", "sensor.bms_highest_cell_n"),
     ):
-        unique_id = f"{device_id}_{key}"
+        unique_id = f"{device_id}_{uid_suffix.get(key, key)}"
         components[unique_id] = sensor(
             unique_id, name, entity_id, f"{{{{ value_json.{key} }}}}",
             state_class="measurement", suggested_display_precision=0, icon="mdi:battery-outline",
