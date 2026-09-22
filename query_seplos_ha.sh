@@ -25,15 +25,41 @@ get_div()
 	N=$(bc <<< "scale = $P; $N / $1")
 }
 
+# Append one received chunk as hex. The first byte is the useful part: the
+# warnings print it as a replacement character, which hides the real value.
+log_rx() {
+	[ "${LOG_FRAMES:-0}" = "1" ] || return 0
+	local hex
+	hex=$(printf '%s' "$1" | od -An -tx1)
+	hex=${hex//$'\n'/}
+	hex=$(printf '%s' "$hex" | tr -s '[:space:]' ' ')
+	hex=${hex# }
+	hex=${hex% }
+	printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$hex" >> "$SCRIPT_DIR/frames.log"
+}
+
 read_serdata()
 {
 	local len rdata tries=2 rd2
 
+	# Some USB-RS485 adapters deliver the start byte as a non-ASCII byte
+	# instead of '~'. The bytes after it are a normal Seplos frame.
 	while [ "${rdata:0:1}" != "~" ]
 	do
+		if [ -n "$rdata" ]; then
+			if [ "${rdata:0:8}" = "20${ADDR}4600" ]; then
+				rdata="~$rdata"
+				break
+			fi
+			if [ "${rdata:1:8}" = "20${ADDR}4600" ]; then
+				rdata="~${rdata:1}"
+				break
+			fi
+		fi
 		tries=$((tries - 1))
 		[ $tries -le 0 ] && { echo "Failed to read start of input char (~), read \"$rdata\"" 1>&2 ; exit 1; }
 		read -r -t5 rdata <"$DEV"
+		log_rx "$rdata"
 	done
 
 	len=${rdata:10:3}
@@ -42,6 +68,7 @@ read_serdata()
 	while [ ${#rdata} -lt $((len + 17)) ]
 	do
 		read -r -t5 rd2 <"$DEV"
+		log_rx "$rd2"
 		[ -z "$rd2" ] && { echo "Failed to read whole response." ; exit 2; }
 		rdata="$rdata$rd2"
 	done
@@ -113,6 +140,8 @@ emit_value()
 
 # Todo... calculate length checksum and insert in send string.
 
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+
 export OUTMODE=${2:-text}
 if [ "$OUTMODE" != "text" ] && [ "$OUTMODE" != "kv" ]; then
 	echo "Unknown output mode: $OUTMODE" >&2
@@ -160,4 +189,6 @@ read_serdata &
 sleep 0.2
 echo -ne "$SEND" >"$DEV"
 wait
+
+fi
 

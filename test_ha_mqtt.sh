@@ -63,6 +63,17 @@ EOF
 load_config "$tmp/config.ini"
 assert_eq "$TOPIC" "seplos" "commented TOPIC must be ignored"
 assert_eq "$DEV" "/dev/ttyUSB0" "serial device"
+(
+	# shellcheck source=query_seplos_ha.sh
+	source "$SCRIPT_DIR/query_seplos_ha.sh"
+	SCRIPT_DIR=$tmp
+	LOG_FRAMES=1
+	log_rx "$(printf '\376~20004600')"
+	LOG_FRAMES=0
+	log_rx "ignored"
+)
+grep -q 'fe 7e 32 30 30 30 34 36 30 30' "$tmp/frames.log" || fail "frame hex log"
+[ ! -s "$tmp/frames.log" ] || [ "$(wc -l < "$tmp/frames.log" | tr -d '[:space:]')" = 1 ] || fail "LOG_FRAMES=0 still logged"
 STAMP_FILE="$tmp/stamp"
 LOGNAME="$tmp/bms.log"
 MQTT_DRY_RUN=1
