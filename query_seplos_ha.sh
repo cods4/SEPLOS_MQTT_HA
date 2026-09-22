@@ -1,7 +1,13 @@
 #!/bin/bash
+export LC_ALL=C
+# Read one Seplos BMS telemetry frame from the RS485 port.
+# Usage: query_seplos_ha.sh 4201 [text|kv]
+#   text  one value per line (default, unchanged manual output)
+#   kv    KEY=value lines for the Home Assistant publisher
 
 DEV=/dev/ttyUSB0
 ADDR=00
+OUTMODE=text
 
 # Get a 4 ASCII digit number and divide by $1, precision $2 ( or 2dp. ) $3 == 1 for signed.
 get_div()
@@ -43,56 +49,71 @@ read_serdata()
 		
 		local l NCELL=$(printf "%d" 0x${rdata:17:2})
 
-#		echo "$NCELL"
+		[ "$OUTMODE" = "kv" ] && printf 'NCELL=%s\n' "$NCELL"
 
 		for l in $(seq 1 $NCELL)
 		do
 			local V=$(printf "%d" 0x${rdata:$OFFSET:4})
 			OFFSET=$((OFFSET + 4))
-			echo "${V}"
+			emit_value "CELL_$l" "$V"
 		done
 
 		local NTEMPS=$(printf "%d" 0x${rdata:$OFFSET:2})
 		OFFSET=$((OFFSET + 2))
 
-		local TSTR="Cell Temp "
+		[ "$OUTMODE" = "kv" ] && printf 'NTEMP=%s\n' "$NTEMPS"
 
+		# The Seplos frame ends the temperature list with environmental temp, then power temp.
 		for l in $(seq 1 $NTEMPS)
 		do
-			[ $l -eq $((NTEMPS - 1)) ] && TSTR="Environmental Temp"
-			[ $l -eq $((NTEMPS)) ] && TSTR="Power Temp"
 			local T=$(printf "%d" 0x${rdata:$OFFSET:4})
 			OFFSET=$((OFFSET + 4))
 			T=$(bc <<< "scale = 1; ($T - 2731)/10")
-			echo "${T}"
+			emit_value "TEMP_$l" "$T"
 		done
 
 		get_div 100 2 1		# Can't use $() because that creates a subshell
-		echo "${N}"	
+		emit_value CURRENT "$N"
 		get_div 100
-		echo "${N}"
+		emit_value VOLTAGE "$N"
 		get_div 100
-		echo "${N}"
+		emit_value RESIDUAL_AH "$N"
 		OFFSET=$((OFFSET + 2))
 		get_div 100
-		echo "${N}"
+		emit_value FULL_AH "$N"
 		get_div 10 1
-		echo "${N}"
+		emit_value SOC "$N"
 		get_div 100
-		echo "${N}"
+		emit_value RATED_AH "$N"
 		get_div 1 0
-		echo "${N}"
+		emit_value CYCLES "$N"
 		get_div 10 1
-		echo "${N}"
+		emit_value SOH "$N"
 		get_div 100 2
-		echo "${N}"
+		emit_value PORT_VOLTAGE "$N"
 	else
 		echo "Response: \"$rdata\""
 	fi
 
 }
 
+# $1 key, $2 value. Text mode prints the value only, so manual output stays the same.
+emit_value()
+{
+	if [ "$OUTMODE" = "kv" ]; then
+		printf '%s=%s\n' "$1" "$2"
+	else
+		printf '%s\n' "$2"
+	fi
+}
+
 # Todo... calculate length checksum and insert in send string.
+
+export OUTMODE=${2:-text}
+if [ "$OUTMODE" != "text" ] && [ "$OUTMODE" != "kv" ]; then
+	echo "Unknown output mode: $OUTMODE" >&2
+	exit 1
+fi
 
 stty -F $DEV sane -echo -echoe -echok 19200
 

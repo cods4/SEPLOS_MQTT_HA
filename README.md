@@ -1,7 +1,7 @@
 # Seplos MQTT
 Read data From Seplos BMS and send them to the Home Assistant
 
-This is a bash script that read data from Seplos BMS via RS485 port and send the data to the Home Assistan via MQTT.
+This is a bash script that reads data from a Seplos BMS over RS485 and publishes it to Home Assistant with MQTT discovery. Home Assistant creates the device and its sensors, binary sensor, and cell statistics from those messages. The topic layout follows the same idea as [batmon-ha](https://github.com/fl4p/batmon-ha): one state topic per metric, plus a retained discovery payload for each entity.
 
 ## Hardware requirements:
 1. Raspberry (i use an RPI4)
@@ -46,19 +46,32 @@ MAXSIZE=2000000
 CELL_MIN_VOLT=2500
 # Maximum voltage in mV permitted for Cell value for correct output
 CELL_MAX_VOLT=3800
+# Friendly name of the Home Assistant device created by MQTT discovery
+DEVICE_NAME=Seplos BMS
+# Discovery prefix configured in the Home Assistant MQTT integration
+DISCOVERY_PREFIX=homeassistant
+# MQTT broker port
+MQTTPORT=1883
+# How often to resend retained discovery messages, in seconds
+DISCOVERY_INTERVAL=3600
+# Nominal pack size in Ah for charge capacity. Usable Ah is this times SOH.
+# Leave unset to use the rated capacity reported by the BMS.
+#PACK_CAPACITY_AH=570
 ```
 
 then install the following pkg:
 
 ```
-sudo apt-get install jq bc mosquitto-clients
+sudo apt-get install bc
 ```
+
+Python 3 builds the discovery payloads and publishes every MQTT message on one broker connection. Raspberry Pi OS already includes it. The machine that runs the script does not need `mosquitto-clients`. Home Assistant still needs its MQTT broker.
 
 edit the crontab to run the script at the boot
 
 ```crontab -e``` and add the line below:
 ```
-@reboot cd ~/SEPLOS_MQTT/| nohup /home/pi/SEPLOS_MQTT/run_bms_query.sh &
+@reboot /home/pi/SEPLOS_MQTT/run_bms_query.sh
 ```
 
 ## Manual execution
@@ -105,11 +118,16 @@ you can see the output like this:
 54.45
 ```
 
-When the script run, it sends an MQTT message like this:
+`query_seplos_ha.sh 4201 kv` prints the same reading as `KEY=value` lines. The publisher uses that form.
+
+On the first good reading, and again every `DISCOVERY_INTERVAL` seconds, the script publishes one retained MQTT device discovery payload. That payload lists every entity. Each entity has a `value_template`, so Home Assistant builds the sensors from one shared JSON state message. Battery status, power, and charge/discharge capacity are templates in that payload, evaluated by Home Assistant:
 
 ```
-homeassistant/sensor/seplos_364715398511 {"lowest_cell":"Cell 8 - 3427 mV","highest_cell":"Cell 7 - 3435 mV","difference":"8","cell01":"3431","cell02":"3431","cell03":"3434","cell04":"3430","cell05":"3433","cell06":"3432","cell07":"3435","cell08":"3427","cell09":"3431","cell10":"3428","cell11":"3433","cell12":"3433","cell13":"3435","cell14":"3431","cell15":"3435","cell16":"3428","cell_temp1":"31.7","cell_temp2":"32.2","cell_temp3":"32.0","cell_temp4":"31.9","env_temp":"37.2","power_temp":"34.9","charge_discharge":"26.01","total_voltage":"54.90","residual_capacity":"271.24","soc":"96.8","cycles":"12","soh":"100.0","port_voltage":"54.93"}
+homeassistant/device/seplos_1/config
+seplos_1/state    {"cell01":3431,"charge_discharge":26.01,"total_voltage":54.90,"soc":96.8,...}
 ```
+
+`id_prefix` is part of the device id and of every `unique_id`. Leave it unchanged after the first start, otherwise Home Assistant creates a second device. `DEVICE_NAME` is the name shown on that device.
 
 ## Installation and configuration for Home Assistant only
 
@@ -154,6 +172,17 @@ MAXSIZE=2000000
 CELL_MIN_VOLT=2500
 # Maximum voltage in mV permitted for Cell value for correct output
 CELL_MAX_VOLT=3800
+# Friendly name of the Home Assistant device created by MQTT discovery
+DEVICE_NAME=Seplos BMS
+# Discovery prefix configured in the Home Assistant MQTT integration
+DISCOVERY_PREFIX=homeassistant
+# MQTT broker port
+MQTTPORT=1883
+# How often to resend retained discovery messages, in seconds
+DISCOVERY_INTERVAL=3600
+# Nominal pack size in Ah for charge capacity. Usable Ah is this times SOH.
+# Leave unset to use the rated capacity reported by the BMS.
+#PACK_CAPACITY_AH=570
 ```
 
 create a shell command in HA:
@@ -174,7 +203,15 @@ then create an automation to run the script every 10 seconds or what you prefer
 
 ## Configuring Home Assistant
 
-Based on the MQTT message then create all MQTT sensors and the template sensors using the configuration.yaml file and add all sensors to the Home Assistant dashboard using the lovelace.yaml file
+Install and start the Mosquitto broker add-on, then add the MQTT integration. Discovery is enabled on that integration by default. `DISCOVERY_PREFIX` in `config.ini` must match the integration's discovery prefix (`homeassistant`).
+
+Start `run_bms_query.sh`, or the automation that calls `run_bms_query_ha.sh`. After the first good BMS read, the device named in `DEVICE_NAME` appears under Settings → Devices & services → MQTT. It includes pack voltage, current, power, SoC, SoH, capacity, temperatures, per-cell voltages in mV, min/max/delta/average/median, charge and discharge capacity in kWh, a charging binary sensor, and battery status (Charging, Discharge, or Standby).
+
+Set `TOPIC=seplos` and `id_prefix=1` when the existing MQTT sensors use ids such as `seplos_1_cell01`. Discovery then reuses those ids. `PACK_CAPACITY_AH=570` keeps the charge-capacity formula that used a 570 Ah pack.
+
+`lovelace.yaml` is an optional dashboard for those entities (`sensor.bms_soc`, `sensor.bms_cell_01`, `sensor.bms_discharge_capacity`, `sensor.bms_charge_capacity`, `sensor.bms_battery_status`, `binary_sensor.bms_battery_charging`, and the rest of the `bms_*` object ids).
+
+When upgrading, remove the Seplos `mqtt:` sensor list and the template sensors for battery status, discharge capacity, charge capacity, and power. The MQTT sensors keep their history because the `unique_id` matches. The four template sensors are a different integration, so delete those entities after removing them from YAML. Discovery then creates `sensor.bms_battery_status`, `sensor.bms_discharge_capacity`, `sensor.bms_charge_capacity`, and `sensor.bms_power`.
 
 example:
 ![BMS dashboard](https://github.com/byte4geek/Seplos-BMS-vs-Home-Assistant/raw/main/bms_ha_panel.JPG)

@@ -46,11 +46,13 @@ views:
         show_state: true
         type: glance
         entities:
-          - entity: sensor.bms_lowest_cell
+          - entity: sensor.bms_lowest_cell_v
           - entity: sensor.bms_difference
-          - entity: sensor.bms_highest_cell
-          - entity: sensor.bms_residual_capacity_kw
-          - entity: sensor.bms_seplos_battery_status
+          - entity: sensor.bms_highest_cell_v
+          - entity: sensor.bms_discharge_capacity
+          - entity: sensor.bms_charge_capacity
+          - entity: sensor.bms_battery_status
+          - entity: sensor.bms_power
         columns: 3
         state_color: false
         title: Seplos Battery Overview
@@ -98,4 +100,8 @@ views:
           - entity: sensor.bms_cycles
           - entity: sensor.bms_soh
           - entity: sensor.bms_port_voltage
+          - entity: sensor.bms_power
+          - entity: sensor.bms_rated_capacity
+          - entity: sensor.bms_full_capacity
+          - entity: binary_sensor.bms_battery_charging
         title: Other Sensors
