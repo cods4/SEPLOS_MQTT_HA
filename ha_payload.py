@@ -103,7 +103,7 @@ def discovery_payload(device_id):
         unique_id = f"{device_id}_cell{index:02d}"
         components[unique_id] = sensor(
             unique_id,
-            f"BMS Cell {index:02d}",
+            f"Cell {index:02d}",
             f"sensor.bms_cell_{index:02d}",
             f"{{{{ value_json.cell{index:02d} }}}}",
             device_class="voltage",
@@ -114,11 +114,11 @@ def discovery_payload(device_id):
         )
 
     plain = (
-        ("lowest_cell_v", "BMS Lowest Cell V", "sensor.bms_lowest_cell_v", "voltage", "mV", "mdi:car-battery", 0),
-        ("highest_cell_v", "BMS Highest Cell V", "sensor.bms_highest_cell_v", "voltage", "mV", "mdi:car-battery", 0),
-        ("difference", "BMS Difference", "sensor.bms_difference", "voltage", "mV", "mdi:vector-difference", 0),
-        ("cell_average", "BMS Cell Average", "sensor.bms_cell_average", "voltage", "mV", "mdi:car-battery", 0),
-        ("cell_median", "BMS Cell Median", "sensor.bms_cell_median", "voltage", "mV", "mdi:car-battery", 0),
+        ("lowest_cell_v", "Lowest Cell V", "sensor.bms_lowest_cell_v", "voltage", "mV", "mdi:car-battery", 0),
+        ("highest_cell_v", "Highest Cell V", "sensor.bms_highest_cell_v", "voltage", "mV", "mdi:car-battery", 0),
+        ("difference", "Difference", "sensor.bms_difference", "voltage", "mV", "mdi:vector-difference", 0),
+        ("cell_average", "Cell Average", "sensor.bms_cell_average", "voltage", "mV", "mdi:car-battery", 0),
+        ("cell_median", "Cell Median", "sensor.bms_cell_median", "voltage", "mV", "mdi:car-battery", 0),
     )
     for key, name, entity_id, device_class, unit, icon, precision in plain:
         unique_id = f"{device_id}_{key}"
@@ -128,8 +128,8 @@ def discovery_payload(device_id):
             unit_of_measurement=unit, suggested_display_precision=precision, icon=icon,
         )
     for key, name, entity_id in (
-        ("lowest_cell_n", "BMS Lowest Cell N", "sensor.bms_lowest_cell_n"),
-        ("highest_cell_n", "BMS Highest Cell N", "sensor.bms_highest_cell_n"),
+        ("lowest_cell_n", "Lowest Cell N", "sensor.bms_lowest_cell_n"),
+        ("highest_cell_n", "Highest Cell N", "sensor.bms_highest_cell_n"),
     ):
         unique_id = f"{device_id}_{key}"
         components[unique_id] = sensor(
@@ -141,31 +141,31 @@ def discovery_payload(device_id):
     for index in range(1, temp_count + 1):
         unique_id = f"{device_id}_cell_temp{index}"
         components[unique_id] = sensor(
-            unique_id, f"BMS Cell Temp {index}", f"sensor.bms_cell_temp_{index}",
+            unique_id, f"Cell Temp {index}", f"sensor.bms_cell_temp_{index}",
             f"{{{{ value_json.cell_temp{index} }}}}",
             device_class="temperature", state_class="measurement",
             unit_of_measurement="°C", suggested_display_precision=1,
         )
     if os.environ.get("HA_ENV_TEMP", "") != "":
         components[f"{device_id}_env_temp"] = sensor(
-            f"{device_id}_env_temp", "BMS Env Temp", "sensor.bms_env_temp",
+            f"{device_id}_env_temp", "Env Temp", "sensor.bms_env_temp",
             "{{ value_json.env_temp }}",
             device_class="temperature", state_class="measurement",
             unit_of_measurement="°C", suggested_display_precision=1,
         )
     if os.environ.get("HA_POWER_TEMP", "") != "":
         components[f"{device_id}_power_temp"] = sensor(
-            f"{device_id}_power_temp", "BMS Power Temp", "sensor.bms_power_temp",
+            f"{device_id}_power_temp", "Power Temp", "sensor.bms_power_temp",
             "{{ value_json.power_temp }}",
             device_class="temperature", state_class="measurement",
             unit_of_measurement="°C", suggested_display_precision=1,
         )
 
     direct = (
-        ("charge_discharge", "BMS Charge Discharge", "sensor.bms_charge_discharge", "current", "A", "mdi:current-dc", 2),
-        ("total_voltage", "BMS Total Voltage", "sensor.bms_total_voltage", "voltage", "V", "mdi:sine-wave", 2),
-        ("port_voltage", "BMS Port Voltage", "sensor.bms_port_voltage", "voltage", "V", "mdi:sine-wave", 2),
-        ("soc", "BMS SOC", "sensor.bms_soc", "battery", "%", "mdi:battery-high", 1),
+        ("charge_discharge", "Charge Discharge", "sensor.bms_charge_discharge", "current", "A", "mdi:current-dc", 2),
+        ("total_voltage", "Total Voltage", "sensor.bms_total_voltage", "voltage", "V", "mdi:sine-wave", 2),
+        ("port_voltage", "Port Voltage", "sensor.bms_port_voltage", "voltage", "V", "mdi:sine-wave", 2),
+        ("soc", "SOC", "sensor.bms_soc", "battery", "%", "mdi:battery-high", 1),
     )
     for key, name, entity_id, device_class, unit, icon, precision in direct:
         unique_id = f"{device_id}_{key}"
@@ -175,10 +175,10 @@ def discovery_payload(device_id):
             unit_of_measurement=unit, suggested_display_precision=precision, icon=icon,
         )
     for key, name, entity_id, unit, icon, precision in (
-        ("residual_capacity", "BMS Residual Capacity", "sensor.bms_residual_capacity", "Ah", "mdi:battery-50", 2),
-        ("full_capacity", "BMS Full Capacity", "sensor.bms_full_capacity", "Ah", "mdi:battery-heart-variant", 2),
-        ("rated_capacity", "BMS Rated Capacity", "sensor.bms_rated_capacity", "Ah", "mdi:battery-heart-variant", 2),
-        ("soh", "BMS SOH", "sensor.bms_soh", "%", "mdi:percent-box", 1),
+        ("residual_capacity", "Residual Capacity", "sensor.bms_residual_capacity", "Ah", "mdi:battery-50", 2),
+        ("full_capacity", "Full Capacity", "sensor.bms_full_capacity", "Ah", "mdi:battery-heart-variant", 2),
+        ("rated_capacity", "Rated Capacity", "sensor.bms_rated_capacity", "Ah", "mdi:battery-heart-variant", 2),
+        ("soh", "SOH", "sensor.bms_soh", "%", "mdi:percent-box", 1),
     ):
         unique_id = f"{device_id}_{key}"
         components[unique_id] = sensor(
@@ -187,7 +187,7 @@ def discovery_payload(device_id):
             suggested_display_precision=precision, icon=icon,
         )
     components[f"{device_id}_cycles"] = sensor(
-        f"{device_id}_cycles", "BMS Cycles", "sensor.bms_cycles",
+        f"{device_id}_cycles", "Cycles", "sensor.bms_cycles",
         "{{ value_json.cycles }}",
         state_class="measurement", suggested_display_precision=0, icon="mdi:counter",
     )
@@ -195,7 +195,7 @@ def discovery_payload(device_id):
     # These replace the configuration.yaml template sensors. The Jinja runs in
     # Home Assistant against this device's JSON state message.
     components["bmsseplosstatus66"] = sensor(
-        "bmsseplosstatus66", "BMS Battery Status", "sensor.bms_battery_status",
+        "bmsseplosstatus66", "Battery Status", "sensor.bms_battery_status",
         "{% set status = value_json.charge_discharge | float(0) %}"
         "{% if status > 0 %}Charging"
         "{% elif status < 0 %}Discharge"
@@ -204,26 +204,26 @@ def discovery_payload(device_id):
         icon="mdi:information-outline",
     )
     components["bms_discharge_capacity_kwh999"] = sensor(
-        "bms_discharge_capacity_kwh999", "BMS Discharge Capacity", "sensor.bms_discharge_capacity",
+        "bms_discharge_capacity_kwh999", "Discharge Capacity", "sensor.bms_discharge_capacity",
         "{{ (((value_json.residual_capacity | float(0) * value_json.total_voltage | float(0))) | round(3) | float * 0.001) | round(1) }}",
         device_class="energy", unit_of_measurement="kWh",
         suggested_display_precision=1, icon="mdi:home-battery",
     )
     components["bms_charge_capacity_kwh999"] = sensor(
-        "bms_charge_capacity_kwh999", "BMS Charge Capacity", "sensor.bms_charge_capacity",
+        "bms_charge_capacity_kwh999", "Charge Capacity", "sensor.bms_charge_capacity",
         "{{ (((" + pack_expr + " * (value_json.soh | float(0) / 100)) - value_json.residual_capacity | float(0)) * value_json.total_voltage | float(0) * 0.001) | round(1) }}",
         device_class="energy", unit_of_measurement="kWh",
         suggested_display_precision=1, icon="mdi:home-battery",
     )
     components["bms_power_75432"] = sensor(
-        "bms_power_75432", "BMS Power", "sensor.bms_power",
+        "bms_power_75432", "Power", "sensor.bms_power",
         "{{ (value_json.total_voltage | float(0) * value_json.charge_discharge | float(0)) | round(0) }}",
         device_class="power", state_class="measurement", unit_of_measurement="W",
         suggested_display_precision=0, icon="mdi:flash",
     )
     components[f"{device_id}_battery_charging"] = {
         "platform": "binary_sensor",
-        "name": "BMS Charging",
+        "name": "Charging",
         "unique_id": f"{device_id}_battery_charging",
         "default_entity_id": "binary_sensor.bms_battery_charging",
         "device_class": "battery_charging",

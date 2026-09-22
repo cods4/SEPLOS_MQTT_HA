@@ -17,16 +17,20 @@ perform the apt-get update and the apt-get upgrade
 move to the your user home and use git clone to download this script
 
 ```
-git clone https://github.com/byte4geek/SEPLOS_MQTT.git
+git clone https://github.com/cods4/SEPLOS_MQTT_HA.git
 
 chmod 700 ~/SEPLOS_MQTT/query_seplos_ha.sh ~/SEPLOS_MQTT/run_bms_query.sh
 ```
 
-edit the script ```~/SEPLOS_MQTT/query_seplos_ha.sh``` and set the COM port that you use (Ex. DEV=/dev/ttyUSB0)
-
-edit the file config.ini ```~/SEPLOS_MQTT/config.ini``` and set the below parameters with your MQTT server information:
+copy the example config and edit it. `DEV` is the USB-RS485 device. The scripts read `config.ini`, which is not tracked, so a later `git pull` leaves your settings in place.
 
 ```
+cp ~/SEPLOS_MQTT/config.example.ini ~/SEPLOS_MQTT/config.ini
+```
+
+```
+# RS485 serial device for the USB adapter
+DEV=/dev/ttyUSB0
 # insert the mqtt info below
 # mqtt host name
 MQTTHOST=192.168.1.2
@@ -148,11 +152,15 @@ chmod 700 ./SEPLOS_MQTT/query_seplos_ha.sh ./SEPLOS_MQTT/run_bms_query_ha.sh
 ssh-copy-id root@<YOUR HA IP>     ---> and choose yes
 ```
 
-edit the script ```./SEPLOS_MQTT/query_seplos_ha.sh``` and set the COM port that you use (Ex. DEV=/dev/ttyUSB0)
-
-edit the file config.ini ```./SEPLOS_MQTT/config.ini``` and set the below parameters with your MQTT server information:
+copy the example config and edit it. `DEV` is the USB-RS485 device. The scripts read `config.ini`, which is not tracked, so a later `git pull` leaves your settings in place.
 
 ```
+cp ./SEPLOS_MQTT/config.example.ini ./SEPLOS_MQTT/config.ini
+```
+
+```
+# RS485 serial device for the USB adapter
+DEV=/dev/ttyUSB0
 # insert the mqtt info below
 # mqtt host name
 MQTTHOST=192.168.1.2

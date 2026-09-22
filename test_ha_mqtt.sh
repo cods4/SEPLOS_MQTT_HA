@@ -43,6 +43,7 @@ trap 'rm -rf "$tmp"' EXIT
 
 cat > "$tmp/config.ini" <<'EOF'
 # TOPIC=wrong
+DEV=/dev/ttyUSB0
 MQTTHOST=127.0.0.1
 TOPIC=seplos
 MQTTUSER=mqttuser
@@ -61,6 +62,7 @@ EOF
 
 load_config "$tmp/config.ini"
 assert_eq "$TOPIC" "seplos" "commented TOPIC must be ignored"
+assert_eq "$DEV" "/dev/ttyUSB0" "serial device"
 STAMP_FILE="$tmp/stamp"
 LOGNAME="$tmp/bms.log"
 MQTT_DRY_RUN=1
@@ -132,7 +134,7 @@ cell = p["cmps"]["seplos_364715398511_cell01"]
 assert cell["platform"] == "sensor"
 assert cell["unique_id"] == "seplos_364715398511_cell01"
 assert cell["default_entity_id"] == "sensor.bms_cell_01"
-assert cell["name"] == "BMS Cell 01"
+assert cell["name"] == "Cell 01"
 assert cell["value_template"] == "{{ value_json.cell01 }}"
 assert cell["device_class"] == "voltage"
 assert cell["unit_of_measurement"] == "mV"

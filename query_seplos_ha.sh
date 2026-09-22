@@ -4,8 +4,12 @@ export LC_ALL=C
 # Usage: query_seplos_ha.sh 4201 [text|kv]
 #   text  one value per line (default, unchanged manual output)
 #   kv    KEY=value lines for the Home Assistant publisher
+# The serial device is DEV in config.ini.
 
-DEV=/dev/ttyUSB0
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=ha_mqtt.sh
+source "$SCRIPT_DIR/ha_mqtt.sh"
+
 ADDR=00
 OUTMODE=text
 
@@ -29,7 +33,7 @@ read_serdata()
 	do
 		tries=$((tries - 1))
 		[ $tries -le 0 ] && { echo "Failed to read start of input char (~), read \"$rdata\"" 1>&2 ; exit 1; }
-		read -r -t5 rdata <$DEV
+		read -r -t5 rdata <"$DEV"
 	done
 
 	len=${rdata:10:3}
@@ -37,7 +41,7 @@ read_serdata()
 
 	while [ ${#rdata} -lt $((len + 17)) ]
 	do
-		read -r -t5 rd2 <$DEV
+		read -r -t5 rd2 <"$DEV"
 		[ -z "$rd2" ] && { echo "Failed to read whole response." ; exit 2; }
 		rdata="$rdata$rd2"
 	done
@@ -115,7 +119,13 @@ if [ "$OUTMODE" != "text" ] && [ "$OUTMODE" != "kv" ]; then
 	exit 1
 fi
 
-stty -F $DEV sane -echo -echoe -echok 19200
+load_config "$SCRIPT_DIR/config.ini" || exit 1
+if [ -z "${DEV:-}" ]; then
+	echo "Set DEV in $SCRIPT_DIR/config.ini (for example DEV=/dev/ttyUSB0)" >&2
+	exit 1
+fi
+
+stty -F "$DEV" sane -echo -echoe -echok 19200
 
 SUM=0
 
@@ -148,6 +158,6 @@ SEND="~$SEND$SUM\r"
 #echo "Sending \"$SEND\""
 read_serdata &
 sleep 0.2
-echo -ne "$SEND" >$DEV
+echo -ne "$SEND" >"$DEV"
 wait
 

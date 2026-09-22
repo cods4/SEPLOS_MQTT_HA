@@ -12,9 +12,13 @@ trim() {
 }
 
 load_config() {
-	local file="$1" line key value
+	local file="$1" line key value example
 	if [ ! -f "$file" ]; then
 		echo "Config not found: $file" >&2
+		example="$(dirname "$file")/config.example.ini"
+		if [ "$(basename "$file")" = "config.ini" ] && [ -f "$example" ]; then
+			echo "Copy config.example.ini to config.ini and edit it." >&2
+		fi
 		return 1
 	fi
 	while IFS= read -r line || [ -n "$line" ]; do
@@ -27,7 +31,7 @@ load_config() {
 		case "$key" in
 			MQTTHOST|TOPIC|MQTTUSER|MQTTPASWD|TELEPERIOD|id_prefix|MAXSIZE|\
 			CELL_MIN_VOLT|CELL_MAX_VOLT|DEVICE_NAME|DISCOVERY_PREFIX|MQTTPORT|\
-			EXPIRE_AFTER|DISCOVERY_INTERVAL|PACK_CAPACITY_AH)
+			EXPIRE_AFTER|DISCOVERY_INTERVAL|PACK_CAPACITY_AH|DEV)
 				printf -v "$key" '%s' "$value"
 				;;
 		esac
